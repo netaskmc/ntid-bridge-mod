@@ -23,7 +23,7 @@ public final class NtidBridgeMod {
     private final BridgeClient bridgeClient = new BridgeClient();
 
     public NtidBridgeMod(IEventBus modEventBus, ModContainer modContainer) {
-        modContainer.registerConfig(ModConfig.Type.SERVER, BridgeConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.COMMON, BridgeConfig.SPEC);
         NeoForge.EVENT_BUS.register(this);
     }
 

@@ -10,15 +10,15 @@ server bridge WebSocket API described in
 .\gradlew.bat build
 ```
 
-The jar is written to `build/libs/ntid_bridge-1.0.2.jar`.
+The jar is written to `build/libs/ntid_bridge-1.0.3.jar`.
 
 ## Configure
 
 Install the jar on the NeoForge dedicated server, start once, then edit the
-generated server config:
+generated config:
 
 ```toml
-# serverconfig/ntid_bridge-server.toml inside the world folder
+# config/ntid_bridge-common.toml
 enabled = true
 bridgeUrl = "wss://serverbridge.netask.cc/minecraft"
 serverToken = "<Server.token from the website admin UI>"
