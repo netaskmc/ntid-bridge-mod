@@ -10,7 +10,7 @@ server bridge WebSocket API described in
 .\gradlew.bat build
 ```
 
-The jar is written to `build/libs/ntid_bridge-1.0.1.jar`.
+The jar is written to `build/libs/ntid_bridge-1.0.2.jar`.
 
 ## Configure
 
@@ -26,6 +26,8 @@ commandPermissionLevel = 4
 reconnectSeconds = 10
 forwardJoinLeave = true
 messageLanguage = "ru"
+minecraftAssetsDirectory = ""
+downloadMinecraftLocalization = true
 ```
 
 Restart the server after changing `serverToken`.
@@ -35,7 +37,12 @@ Restart the server after changing `serverToken`.
 - Sends `minecraft.chat` for in-game chat.
 - Sends `minecraft.system` for deaths, advancements, joins, and leaves.
 - Formats death and advancement text using `messageLanguage`, defaulting to
-  Russian (`ru`/`ru_ru`).
+  Russian (`ru`/`ru_ru`). Vanilla non-English translations are loaded from
+  Minecraft client assets when available; set `minecraftAssetsDirectory` to an
+  assets directory containing `indexes/` and `objects/` if auto-detection cannot
+  find one. If still missing, `downloadMinecraftLocalization` downloads the
+  needed vanilla language asset from Mojang and caches it under the server
+  directory.
 - Receives `discord.chat` and broadcasts it in Minecraft chat.
 - Receives `backend.broadcast` and broadcasts it in Minecraft chat.
 - Receives `backend.command`, executes it as the server, and responds with

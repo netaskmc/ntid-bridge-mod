@@ -33,6 +33,14 @@ public final class BridgeConfig {
             .comment("Language used when forwarding server-generated messages like deaths and advancements. Use ru or ru_ru for Russian.")
             .define("messageLanguage", "ru");
 
+    public static final ModConfigSpec.ConfigValue<String> MINECRAFT_ASSETS_DIRECTORY = BUILDER
+            .comment("Optional Minecraft client assets directory containing indexes/ and objects/. Leave empty to auto-detect common locations.")
+            .define("minecraftAssetsDirectory", "");
+
+    public static final ModConfigSpec.BooleanValue DOWNLOAD_MINECRAFT_LOCALIZATION = BUILDER
+            .comment("Download missing vanilla Minecraft localization files from Mojang's asset servers and cache them under the server directory.")
+            .define("downloadMinecraftLocalization", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private BridgeConfig() {
