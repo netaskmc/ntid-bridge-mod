@@ -29,6 +29,10 @@ public final class BridgeConfig {
             .comment("Forward player join and leave events as minecraft.system messages.")
             .define("forwardJoinLeave", true);
 
+    public static final ModConfigSpec.ConfigValue<String> MESSAGE_LANGUAGE = BUILDER
+            .comment("Language used when forwarding server-generated messages like deaths and advancements. Use ru or ru_ru for Russian.")
+            .define("messageLanguage", "ru");
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private BridgeConfig() {

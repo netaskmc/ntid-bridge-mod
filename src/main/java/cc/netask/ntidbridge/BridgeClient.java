@@ -86,10 +86,14 @@ public final class BridgeClient implements WebSocket.Listener {
         send(payload);
     }
 
-    public void sendAdvancement(ServerPlayer player, String title, String description) {
+    public void sendSystem(String kind, Component message, ServerPlayer player) {
+        sendSystem(kind, ComponentLocalizer.localize(message, server, BridgeConfig.MESSAGE_LANGUAGE.get()), player);
+    }
+
+    public void sendAdvancement(ServerPlayer player, Component title, Component description) {
         JsonObject payload = baseSystemPayload("advancement", player);
-        payload.addProperty("title", title);
-        payload.addProperty("description", description);
+        payload.addProperty("title", ComponentLocalizer.localize(title, server, BridgeConfig.MESSAGE_LANGUAGE.get()));
+        payload.addProperty("description", ComponentLocalizer.localize(description, server, BridgeConfig.MESSAGE_LANGUAGE.get()));
         send(payload);
     }
 

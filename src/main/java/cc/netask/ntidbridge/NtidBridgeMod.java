@@ -59,7 +59,7 @@ public final class NtidBridgeMod {
     @SubscribeEvent
     public void onLivingDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-            bridgeClient.sendSystem("death", player.getCombatTracker().getDeathMessage().getString(), player);
+            bridgeClient.sendSystem("death", player.getCombatTracker().getDeathMessage(), player);
         }
     }
 
@@ -74,8 +74,8 @@ public final class NtidBridgeMod {
 
             bridgeClient.sendAdvancement(
                     player,
-                    display.getTitle().getString(),
-                    display.getDescription().getString()
+                    display.getTitle(),
+                    display.getDescription()
             );
         }
     }
