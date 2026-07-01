@@ -146,7 +146,6 @@ final class ComponentLocalizer {
         ResourceManager resourceManager = server.getResourceManager();
 
         loadLanguageFile(translations, "en_us");
-        loadMinecraftAssetLanguage(server, translations, "en_us");
         loadLanguageFile(resourceManager, translations, "en_us");
         if (!"en_us".equals(languageCode)) {
             loadLanguageFile(translations, languageCode);

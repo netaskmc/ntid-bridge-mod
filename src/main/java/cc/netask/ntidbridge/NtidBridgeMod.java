@@ -1,6 +1,7 @@
 package cc.netask.ntidbridge;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -45,14 +46,14 @@ public final class NtidBridgeMod {
     @SubscribeEvent
     public void onPlayerJoined(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-            bridgeClient.sendSystem("join", player.getGameProfile().getName() + " joined the game", player);
+            bridgeClient.sendSystem("join", Component.translatable("multiplayer.player.joined", player.getDisplayName()), player);
         }
     }
 
     @SubscribeEvent
     public void onPlayerLeft(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-            bridgeClient.sendSystem("leave", player.getGameProfile().getName() + " left the game", player);
+            bridgeClient.sendSystem("leave", Component.translatable("multiplayer.player.left", player.getDisplayName()), player);
         }
     }
 
