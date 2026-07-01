@@ -1,8 +1,7 @@
 # NTID Server Bridge NeoForge Mod
 
 Server-side NeoForge 1.21.1 mod that connects a Minecraft server to the NTID
-server bridge WebSocket API described in
-`C:/Users/sasha/source/repos/ntid/SERVER_BRIDGE.md`.
+server bridge WebSocket API.
 
 ## Build
 
