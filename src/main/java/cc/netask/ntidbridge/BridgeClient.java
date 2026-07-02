@@ -16,6 +16,7 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -31,38 +32,50 @@ public final class BridgeClient implements WebSocket.Listener {
         thread.setDaemon(true);
         return thread;
     });
+    private final Object outboundLock = new Object();
+    private final ArrayDeque<String> outboundQueue = new ArrayDeque<>();
     private final AtomicBoolean stopping = new AtomicBoolean(false);
     private final StringBuilder incoming = new StringBuilder();
 
     private volatile MinecraftServer server;
     private volatile WebSocket socket;
     private volatile ScheduledFuture<?> reconnectTask;
+    private volatile boolean running;
+    private volatile boolean authenticated;
 
     public void start(MinecraftServer server) {
         this.server = server;
         stopping.set(false);
 
         if (!BridgeConfig.ENABLED.get()) {
+            running = false;
+            clearOutboundQueue();
             NtidBridgeMod.LOGGER.info("NTID bridge is disabled by config");
             return;
         }
 
         if (BridgeConfig.SERVER_TOKEN.get().isBlank()) {
+            running = false;
+            clearOutboundQueue();
             NtidBridgeMod.LOGGER.warn("NTID bridge serverToken is empty; not connecting");
             return;
         }
 
+        running = true;
         connect();
     }
 
     public void stop() {
         stopping.set(true);
+        running = false;
         ScheduledFuture<?> task = reconnectTask;
         if (task != null) {
             task.cancel(false);
         }
         WebSocket current = socket;
         socket = null;
+        authenticated = false;
+        clearOutboundQueue();
         if (current != null) {
             current.sendClose(WebSocket.NORMAL_CLOSURE, "server stopping");
         }
@@ -149,20 +162,117 @@ public final class BridgeClient implements WebSocket.Listener {
     }
 
     private void send(JsonObject payload) {
-        WebSocket current = socket;
-        if (current == null) {
+        send(GSON.toJson(payload));
+    }
+
+    private void send(String payload) {
+        if (!running) {
             return;
         }
 
-        current.sendText(GSON.toJson(payload), true).exceptionally(error -> {
-            NtidBridgeMod.LOGGER.warn("Failed to send NTID bridge payload", error);
-            return null;
-        });
+        WebSocket current = socket;
+        if (current == null || !authenticated) {
+            enqueue(payload);
+            return;
+        }
+
+        sendNow(current, payload);
+    }
+
+    private boolean sendNow(WebSocket current, String payload) {
+        try {
+            current.sendText(payload, true).exceptionally(error -> {
+                handleSendFailure(current, payload, error);
+                return null;
+            });
+            return true;
+        } catch (RuntimeException error) {
+            handleSendFailure(current, payload, error);
+            return false;
+        }
+    }
+
+    private void handleSendFailure(WebSocket failedSocket, String payload, Throwable error) {
+        if (stopping.get()) {
+            return;
+        }
+
+        NtidBridgeMod.LOGGER.warn("Failed to send NTID bridge payload; queueing for reconnect", error);
+        enqueueFirst(payload);
+        if (socket == failedSocket) {
+            socket = null;
+            authenticated = false;
+            scheduleReconnect();
+        }
+    }
+
+    private void enqueue(String payload) {
+        synchronized (outboundLock) {
+            int maximumMessages = BridgeConfig.MAX_QUEUED_MESSAGES.get();
+            if (maximumMessages <= 0) {
+                return;
+            }
+
+            while (outboundQueue.size() >= maximumMessages) {
+                outboundQueue.removeFirst();
+                NtidBridgeMod.LOGGER.warn("NTID bridge outbound queue is full; dropping oldest queued message");
+            }
+            outboundQueue.addLast(payload);
+        }
+    }
+
+    private void enqueueFirst(String payload) {
+        synchronized (outboundLock) {
+            int maximumMessages = BridgeConfig.MAX_QUEUED_MESSAGES.get();
+            if (maximumMessages <= 0) {
+                return;
+            }
+
+            while (outboundQueue.size() >= maximumMessages) {
+                outboundQueue.removeLast();
+                NtidBridgeMod.LOGGER.warn("NTID bridge outbound queue is full; dropping newest queued message");
+            }
+            outboundQueue.addFirst(payload);
+        }
+    }
+
+    private void flushOutboundQueue() {
+        int flushedMessages = 0;
+        while (authenticated) {
+            WebSocket current = socket;
+            if (current == null) {
+                break;
+            }
+
+            String payload;
+            synchronized (outboundLock) {
+                payload = outboundQueue.pollFirst();
+            }
+            if (payload == null) {
+                break;
+            }
+
+            if (!sendNow(current, payload)) {
+                break;
+            }
+            flushedMessages++;
+        }
+
+        if (flushedMessages > 0) {
+            NtidBridgeMod.LOGGER.info("Flushed {} queued NTID bridge message(s)", flushedMessages);
+        }
+    }
+
+    private void clearOutboundQueue() {
+        synchronized (outboundLock) {
+            outboundQueue.clear();
+        }
     }
 
     @Override
     public void onOpen(WebSocket webSocket) {
         socket = webSocket;
+        authenticated = false;
         NtidBridgeMod.LOGGER.info("NTID bridge connected");
         webSocket.request(1);
     }
@@ -183,6 +293,7 @@ public final class BridgeClient implements WebSocket.Listener {
     public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
         if (socket == webSocket) {
             socket = null;
+            authenticated = false;
         }
         NtidBridgeMod.LOGGER.info("NTID bridge closed: {} {}", statusCode, reason);
         scheduleReconnect();
@@ -193,6 +304,7 @@ public final class BridgeClient implements WebSocket.Listener {
     public void onError(WebSocket webSocket, Throwable error) {
         if (socket == webSocket) {
             socket = null;
+            authenticated = false;
         }
         NtidBridgeMod.LOGGER.warn("NTID bridge socket error", error);
         scheduleReconnect();
@@ -203,7 +315,11 @@ public final class BridgeClient implements WebSocket.Listener {
             JsonObject message = JsonParser.parseString(text).getAsJsonObject();
             String type = stringValue(message, "type", "");
             switch (type) {
-                case "hello" -> NtidBridgeMod.LOGGER.info("NTID bridge authenticated for {}", message.get("server"));
+                case "hello" -> {
+                    authenticated = true;
+                    NtidBridgeMod.LOGGER.info("NTID bridge authenticated for {}", message.get("server"));
+                    flushOutboundQueue();
+                }
                 case "pong", "minecraft.chat.sent", "minecraft.system.sent" -> {
                 }
                 case "discord.chat" -> runOnServer(() -> broadcastDiscordChat(message));

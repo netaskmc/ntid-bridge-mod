@@ -25,6 +25,10 @@ public final class BridgeConfig {
             .comment("Delay between reconnect attempts when the bridge socket closes or fails.")
             .defineInRange("reconnectSeconds", 10, 1, 300);
 
+    public static final ModConfigSpec.IntValue MAX_QUEUED_MESSAGES = BUILDER
+            .comment("Maximum outbound messages to keep while the bridge is disconnected. Oldest messages are dropped when full; set to 0 to disable queueing.")
+            .defineInRange("maxQueuedMessages", 500, 0, 10000);
+
     public static final ModConfigSpec.BooleanValue FORWARD_JOIN_LEAVE = BUILDER
             .comment("Forward player join and leave events as minecraft.system messages.")
             .define("forwardJoinLeave", true);
